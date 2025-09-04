@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aircraft</title>
+    <script
+      async
+      type="text/javascript"
+      src="//static.klaviyo.com/onsite/js/klaviyo.js?company_id=ECJeMj"
+    ></script>
+  </head>
+  <body>
+    <h1>Aircraft</h1>
+
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5/dist/js.cookie.min.js"></script>
+    <script>
+      window._learnq = window._learnq || [];
+      function identifyKlaviyo(userProfile) {
+        try {
+          var profile = userProfile || {};
+          if (!profile.$email && profile.email) profile.$email = profile.email;
+          if (!profile.$phone_number && profile.phone)
+            profile.$phone_number = profile.phone;
+          var payload = {};
+          ["$email", "$first_name", "$last_name", "$phone_number"].forEach(
+            function (key) {
+              if (profile[key]) payload[key] = profile[key];
+            }
+          );
+          if (Object.keys(payload).length === 0) return;
+          if (
+            typeof window.klaviyo !== "undefined" &&
+            typeof window.klaviyo.identify === "function"
+          ) {
+            window.klaviyo.identify(payload);
+          }
+          if (Array.isArray(window._learnq)) {
+            window._learnq.push(["identify", payload]);
+          }
+        } catch (e) {
+          console.error("Klaviyo identify error", e);
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        var email = Cookies.get("userEmail");
+        var phone = Cookies.get("userPhone");
+        if (email) {
+          identifyKlaviyo({ $email: email, $phone_number: phone });
+        }
+      });
+    </script>
+  </body>
+</html>
