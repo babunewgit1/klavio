@@ -188,103 +188,55 @@ function updateKlaviyoTrackingForReturningUser() {
   }
 }
 
-// Track specific page with custom page name (like Sustainability) - LOGGED-IN USERS ONLY
-// Usage example: trackSpecificPage("Sustainability");
-// This will send: klaviyo.track('Viewed Page', {"page name": "Sustainability"})
-function trackSpecificPage(pageName) {
+// Track custom events in Klaviyo
+function trackCustomEvent(eventName, eventData = {}) {
   try {
     const userEmail = Cookies.get("userEmail");
 
-    // Only track if user is logged in
-    if (!userEmail) {
-      return;
+    // Add user email if available
+    if (userEmail) {
+      eventData.$email = userEmail;
     }
 
-    const fullUrl = window.location.href;
-    const currentPage = window.location.pathname;
-    const pageTitle = document.title;
+    // Add timestamp
+    eventData.$timestamp = new Date().toISOString();
 
-    // Identify user first
+    // Track in _learnq
     if (window._learnq && Array.isArray(window._learnq)) {
-      window._learnq.push(["identify", { $email: userEmail }]);
+      window._learnq.push(["track", eventName, eventData]);
     }
 
-    if (
-      typeof window.klaviyo !== "undefined" &&
-      typeof window.klaviyo.identify === "function"
-    ) {
-      window.klaviyo.identify({ $email: userEmail });
-    }
-
-    // Track with custom page name using _learnq
-    if (window._learnq && Array.isArray(window._learnq)) {
-      window._learnq.push([
-        "track",
-        "Viewed Page",
-        {
-          "page name": pageName,
-          $page_url: fullUrl,
-          $page_path: currentPage,
-          $page_title: pageTitle,
-        },
-      ]);
-    }
-
-    // Track with custom page name using Klaviyo
+    // Track in Klaviyo
     if (
       typeof window.klaviyo !== "undefined" &&
       typeof window.klaviyo.track === "function"
     ) {
-      window.klaviyo.track("Viewed Page", {
-        "page name": pageName,
-        $page_url: fullUrl,
-        $page_path: currentPage,
-        $page_title: pageTitle,
-      });
+      window.klaviyo.track(eventName, eventData);
     }
+
+    console.log("Custom event tracked:", eventName, eventData);
   } catch (e) {
-    console.error("Failed to track specific page", e);
+    console.error("Failed to track custom event", e);
   }
 }
 
-// Auto-track current page based on URL path - LOGGED-IN USERS ONLY
-function trackCurrentPage() {
-  try {
-    const userEmail = Cookies.get("userEmail");
-
-    // Only track if user is logged in
-    if (!userEmail) {
-      return;
-    }
-
-    const currentPath = window.location.pathname;
-    const pageTitle = document.title;
-
-    // Map URL paths to page names
-    let pageName = "";
-
-    if (currentPath === "/" || currentPath === "/home") {
-      pageName = "Home";
-    } else if (currentPath.includes("/sustainability")) {
-      pageName = "Sustainability";
-    } else if (currentPath.includes("/about")) {
-      pageName = "About Us";
-    } else if (currentPath.includes("/contact")) {
-      pageName = "Contact";
-    } else if (currentPath.includes("/aircraft")) {
-      pageName = "Aircraft";
-    } else if (currentPath.includes("/checkout")) {
-      pageName = "Checkout";
-    } else {
-      // Use page title as fallback
-      pageName = pageTitle || "Unknown Page";
-    }
-
-    // Track the page
-    trackSpecificPage(pageName);
-  } catch (e) {
-    console.error("Failed to auto-track current page", e);
-  }
+// Debug function to test Klaviyo tracking
+function debugKlaviyoTracking() {
+  console.log("=== Klaviyo Debug Info ===");
+  console.log("_learnq available:", !!window._learnq);
+  console.log("_learnq is array:", Array.isArray(window._learnq));
+  console.log("klaviyo available:", !!window.klaviyo);
+  console.log(
+    "klaviyo.track available:",
+    !!(window.klaviyo && typeof window.klaviyo.track === "function")
+  );
+  console.log(
+    "klaviyo.identify available:",
+    !!(window.klaviyo && typeof window.klaviyo.identify === "function")
+  );
+  console.log("User email:", Cookies.get("userEmail"));
+  console.log("Current page:", window.location.pathname);
+  console.log("=========================");
 }
 
 // Export functions to global scope
@@ -292,18 +244,76 @@ window.showAuthFormsWrapper = showAuthFormsWrapper;
 window.hideAuthFormsWrapper = hideAuthFormsWrapper;
 window.updateUIForLoggedInUser = updateUIForLoggedInUser;
 window.checkLoginStatus = checkLoginStatus;
-window.trackSpecificPage = trackSpecificPage;
-window.trackCurrentPage = trackCurrentPage;
+window.trackPageVisit = trackPageVisit;
+window.trackCustomEvent = trackCustomEvent;
+window.debugKlaviyoTracking = debugKlaviyoTracking;
+
+// Track page visits and send to Klaviyo
+function trackPageVisit() {
+  try {
+    const currentPage = window.location.pathname;
+    const pageTitle = document.title;
+    const fullUrl = window.location.href;
+    const userEmail = Cookies.get("userEmail");
+
+    // First, ensure user is identified if logged in
+    if (userEmail) {
+      // Identify user first
+      if (window._learnq && Array.isArray(window._learnq)) {
+        window._learnq.push(["identify", { $email: userEmail }]);
+      }
+
+      if (
+        typeof window.klaviyo !== "undefined" &&
+        typeof window.klaviyo.identify === "function"
+      ) {
+        window.klaviyo.identify({ $email: userEmail });
+      }
+    }
+
+    // Track page visit using the standard "Viewed Page" event
+    if (window._learnq && Array.isArray(window._learnq)) {
+      window._learnq.push([
+        "track",
+        "Viewed Page",
+        {
+          $page_url: fullUrl,
+          $page_path: currentPage,
+          $page_title: pageTitle,
+          $timestamp: new Date().toISOString(),
+        },
+      ]);
+    }
+
+    // Also track in Klaviyo if available
+    if (
+      typeof window.klaviyo !== "undefined" &&
+      typeof window.klaviyo.track === "function"
+    ) {
+      window.klaviyo.track("Viewed Page", {
+        $page_url: fullUrl,
+        $page_path: currentPage,
+        $page_title: pageTitle,
+        $timestamp: new Date().toISOString(),
+      });
+    }
+
+    console.log("Page visit tracked:", {
+      page: currentPage,
+      title: pageTitle,
+      url: fullUrl,
+      userEmail: userEmail || "anonymous",
+    });
+  } catch (e) {
+    console.error("Failed to track page visit", e);
+  }
+}
 
 // Initialize auth forms wrapper on page load
 document.addEventListener("DOMContentLoaded", () => {
   hideAuthFormsWrapper();
   checkLoginStatus(); // This will check and send flight request IDs
-
-  // Auto-track current page for logged-in users
-  setTimeout(() => {
-    trackCurrentPage();
-  }, 1000); // Small delay to ensure Klaviyo is loaded
+  trackPageVisit(); // Track the current page visit
 });
 
 //toast js
