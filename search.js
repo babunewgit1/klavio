@@ -745,11 +745,111 @@ function renderPagination(filteredSets) {
   pagination.appendChild(nextButton);
 }
 
+// Function to track aircraft view in Klaviyo for logged-in users
+function trackAircraftViewInKlaviyo(aircraftData) {
+  try {
+    // Check if user is logged in
+    const userEmail = Cookies.get("userEmail");
+    if (!userEmail) {
+      console.log("User not logged in, skipping Klaviyo aircraft tracking");
+      return;
+    }
+
+    console.log("Starting Klaviyo tracking for user:", userEmail);
+
+    // Prepare aircraft data for Klaviyo
+    const item = {
+      ProductName: aircraftData.description_text || "Aircraft",
+      ProductID: aircraftData._id || "",
+      SKU: aircraftData.registration || "",
+      Categories: aircraftData.class_text || "",
+      ImageURL: aircraftData.exterior_image1_image || "",
+      URL: `https://jettly.com/fleet/${aircraftData._id}`,
+      Brand: aircraftData.operator_name || "",
+      Price: aircraftData.price_per_hour_retail || 0,
+      CompareAtPrice: (aircraftData.price_per_hour_retail || 0) * 1.2,
+    };
+
+    // Callback function to track the product view
+    function trackProductCallback() {
+      if (
+        typeof window.klaviyo !== "undefined" &&
+        typeof window.klaviyo.track === "function"
+      ) {
+        window.klaviyo.track("Viewed Product", item);
+        console.log("Aircraft view tracked in Klaviyo:", item);
+      }
+    }
+
+    // Identify user and track product view using callback (following Klaviyo documentation pattern)
+    if (
+      typeof window.klaviyo !== "undefined" &&
+      typeof window.klaviyo.identify === "function"
+    ) {
+      window.klaviyo.identify(
+        {
+          email: userEmail,
+        },
+        trackProductCallback
+      );
+      console.log("User identified in Klaviyo:", userEmail);
+    } else {
+      // Fallback: try direct tracking if identify is not available
+      trackProductCallback();
+    }
+  } catch (e) {
+    console.error("Failed to track aircraft view in Klaviyo", e);
+  }
+}
+
 // Function to attach event listeners to "View Details" buttons
 function attachDetailsButtonListeners() {
   document.querySelectorAll(".details-button").forEach((button) => {
     button.addEventListener("click", function () {
       const btnDataIndex = button.getAttribute("data-index");
+      const aircraftId = button.getAttribute("data_got_id");
+
+      // Log the specific aircraft data based on the button's data_got_id
+      if (apiData.response && aircraftId) {
+        // Find which aircraft set contains the data
+        let specificAircraftData = null;
+        let foundInSet = null;
+
+        // Dynamically find all aircraft sets in the response
+        const aircraftSetKeys = Object.keys(apiData.response).filter(
+          (key) =>
+            key.startsWith("aircraft_set_") &&
+            Array.isArray(apiData.response[key])
+        );
+
+        // Check all aircraft sets dynamically
+        for (const setKey of aircraftSetKeys) {
+          const aircraftSet = apiData.response[setKey];
+          if (aircraftSet && aircraftSet.length > 0) {
+            // Find aircraft by _id instead of index
+            specificAircraftData = aircraftSet.find(
+              (aircraft) => aircraft._id === aircraftId
+            );
+            if (specificAircraftData) {
+              foundInSet = setKey;
+              break;
+            }
+          }
+        }
+
+        if (specificAircraftData) {
+          console.log(
+            `Specific Aircraft Data from ${foundInSet} (ID: ${aircraftId}):`,
+            specificAircraftData.description_text
+          );
+
+          // Track aircraft view in Klaviyo for logged-in users
+          trackAircraftViewInKlaviyo(specificAircraftData);
+        } else {
+          console.log("Aircraft data not found for ID:", aircraftId);
+        }
+      }
+
       document.querySelectorAll(".item_tab_block").forEach((block) => {
         const blockDataIndex = block.getAttribute("data-index");
         if (blockDataIndex === btnDataIndex) {
@@ -1048,12 +1148,14 @@ function getHotDealHtml(
 <a  class="bookinglink button fill_button request-book-btn" href="#"  data-flightrequestid="${flightRequestId}" data-type="instant" data-aircraftid="${
     item._id
   }">REQUEST TO BOOK</a>
-          <button class="details-button button fill_button grey_button" data-index="${index}">View Details <img src="https://cdn.prod.website-files.com/6713759f858863c516dbaa19/67459d1f63b186d24efc3bbe_Jettly-Search-Results-Page-(List-View-Details-Tab).png" alt="View Details Icon" />
+          <button data_got_id="${
+            item._id
+          }" class="details-button button fill_button grey_button" data-index="${index}">View Details <img src="https://cdn.prod.website-files.com/6713759f858863c516dbaa19/67459d1f63b186d24efc3bbe_Jettly-Search-Results-Page-(List-View-Details-Tab).png" alt="View Details Icon" />
           </button>
         </div>
       </div>
     </div>
-    <div class="item_tab_block" data-index="${index}">
+    <div class="item_tab_block" data-index="${index}" data>
       <div class="overflow_wrapper">
       <div class="cross_mb_icon">
         <div class="item_tab_heading_block">
@@ -2013,7 +2115,9 @@ function getRegularItemHtml(
             <a  class="bookinglink button fill_button request-book-btn" href="#"  data-flightrequestid="${flightRequestId}" data-type="market" data-aircraftid="${
     item._id
   }">REQUEST TO BOOK</a>
-            <button class="details-button button fill_button grey_button" data-index="${index}">View Details <img src="https://cdn.prod.website-files.com/6713759f858863c516dbaa19/67459d1f63b186d24efc3bbe_Jettly-Search-Results-Page-(List-View-Details-Tab).png" alt="View Details Icon" />
+            <button data_got_id="${
+              item._id
+            }" class="details-button button fill_button grey_button" data-index="${index}">View Details <img src="https://cdn.prod.website-files.com/6713759f858863c516dbaa19/67459d1f63b186d24efc3bbe_Jettly-Search-Results-Page-(List-View-Details-Tab).png" alt="View Details Icon" />
             </button>
           </div>
         </div>
@@ -3841,6 +3945,8 @@ function initialize() {
       apiData = responseData;
       longestFlight = apiData.response.longest_flight_leg;
       flightRequestId = apiData.response.flightrequest;
+
+      console.log(apiData); // calling api
 
       // Save flightRequestId in sessionStorage as an array
       let storedFlightIds = JSON.parse(

@@ -130,16 +130,6 @@ function updateKlaviyoTrackingFromAPI(apiData) {
     var lastName = responseData.lastname || "";
     var phone = responseData.phone || "";
 
-    // Update _learnq tracking
-    if (window._learnq && Array.isArray(window._learnq)) {
-      window._learnq.push([
-        "identify",
-        {
-          $email: userEmail,
-        },
-      ]);
-    }
-
     // Update Klaviyo identify
     if (
       typeof window.klaviyo !== "undefined" &&
@@ -163,16 +153,6 @@ function updateKlaviyoTrackingForReturningUser() {
     var userEmail = Cookies.get("userEmail");
 
     if (userEmail) {
-      // Update _learnq tracking with email only
-      if (window._learnq && Array.isArray(window._learnq)) {
-        window._learnq.push([
-          "identify",
-          {
-            $email: userEmail,
-          },
-        ]);
-      }
-
       // Update Klaviyo identify with email only
       if (
         typeof window.klaviyo !== "undefined" &&
@@ -205,29 +185,11 @@ function trackSpecificPage(pageName) {
     const pageTitle = document.title;
 
     // Identify user first
-    if (window._learnq && Array.isArray(window._learnq)) {
-      window._learnq.push(["identify", { $email: userEmail }]);
-    }
-
     if (
       typeof window.klaviyo !== "undefined" &&
       typeof window.klaviyo.identify === "function"
     ) {
       window.klaviyo.identify({ $email: userEmail });
-    }
-
-    // Track with custom page name using _learnq
-    if (window._learnq && Array.isArray(window._learnq)) {
-      window._learnq.push([
-        "track",
-        "Viewed Page",
-        {
-          "page name": pageName,
-          $page_url: fullUrl,
-          $page_path: currentPage,
-          $page_title: pageTitle,
-        },
-      ]);
     }
 
     // Track with custom page name using Klaviyo
