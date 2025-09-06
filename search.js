@@ -582,6 +582,7 @@ function renderPage(page, filteredSets) {
         type: bookingBtn.dataset.type,
         flightRequestId: bookingBtn.dataset.flightrequestid,
         aircraftId: bookingBtn.dataset.aircraftid,
+        price: bookingBtn.dataset.price,
         fare_class: "Value",
         catering: "No",
         groundtransfers: "No",
@@ -844,6 +845,16 @@ function attachDetailsButtonListeners() {
             }
           }
         }
+
+        // Also check hot deals if not found in regular aircraft sets
+        // if (!specificAircraftData && apiData.response.hot_deal_aircraft) {
+        //   specificAircraftData = apiData.response.hot_deal_aircraft.find(
+        //     (aircraft) => aircraft._id === aircraftId
+        //   );
+        //   if (specificAircraftData) {
+        //     foundInSet = "hot_deal_aircraft";
+        //   }
+        // }
 
         if (specificAircraftData) {
           // Track aircraft view in Klaviyo for logged-in users
@@ -1148,10 +1159,14 @@ function getHotDealHtml(
         <div class="bookingbutton">
 <a  class="bookinglink button fill_button request-book-btn" href="#"  data-flightrequestid="${flightRequestId}" data-type="instant" data-aircraftid="${
     item._id
-  }">REQUEST TO BOOK</a>
-          <button data_got_id="${
-            item._id
-          }" data-calculated-price="${calculatedValue}" class="details-button button fill_button grey_button" data-index="${index}">View Details <img src="https://cdn.prod.website-files.com/6713759f858863c516dbaa19/67459d1f63b186d24efc3bbe_Jettly-Search-Results-Page-(List-View-Details-Tab).png" alt="View Details Icon" />
+  }" data-price="${parseInt(
+    calculateTotal.replace(/,/g, ""),
+    10
+  )}">REQUEST TO BOOK</a>
+          <button data_got_id="${item._id}" data-calculated-price="${parseInt(
+    calculateTotal.replace(/,/g, ""),
+    10
+  )}" class="details-button button fill_button grey_button" data-index="${index}">View Details <img src="https://cdn.prod.website-files.com/6713759f858863c516dbaa19/67459d1f63b186d24efc3bbe_Jettly-Search-Results-Page-(List-View-Details-Tab).png" alt="View Details Icon" />
           </button>
         </div>
       </div>
@@ -2115,7 +2130,10 @@ function getRegularItemHtml(
           <div class="bookingbutton">
             <a  class="bookinglink button fill_button request-book-btn" href="#"  data-flightrequestid="${flightRequestId}" data-type="market" data-aircraftid="${
     item._id
-  }">REQUEST TO BOOK</a>
+  }" data-price="${parseInt(
+    calculateTotal.replace(/,/g, ""),
+    10
+  )}">REQUEST TO BOOK</a>
             <button data_got_id="${item._id}" data-calculated-price="${parseInt(
     calculateTotal.replace(/,/g, ""),
     10
