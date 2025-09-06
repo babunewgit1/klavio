@@ -582,7 +582,8 @@ function renderPage(page, filteredSets) {
         type: bookingBtn.dataset.type,
         flightRequestId: bookingBtn.dataset.flightrequestid,
         aircraftId: bookingBtn.dataset.aircraftid,
-        price: bookingBtn.dataset.price,
+        price:
+          window.aircraftCalculatedValues[bookingBtn.dataset.aircraftid] || 0,
         fare_class: "Value",
         catering: "No",
         groundtransfers: "No",
@@ -747,7 +748,7 @@ function renderPagination(filteredSets) {
 }
 
 // Function to track aircraft view in Klaviyo for logged-in users
-function trackAircraftViewInKlaviyo(aircraftData, calculatedPrice) {
+function trackAircraftViewInKlaviyo(aircraftData) {
   try {
     // Check if user is logged in
     const userEmail = Cookies.get("userEmail");
@@ -755,10 +756,10 @@ function trackAircraftViewInKlaviyo(aircraftData, calculatedPrice) {
       return;
     }
 
-    // Use the calculated price from the UI, or fallback to base hourly rate
-    const calculatedValue = calculatedPrice
-      ? parseInt(calculatedPrice, 10)
-      : Math.round(aircraftData.price_per_hour_fixedrate_number || 0);
+    // Use the exact same calculated value from the UI
+    const calculatedValue =
+      window.aircraftCalculatedValues[aircraftData._id] ||
+      Math.round(aircraftData.price_per_hour_fixedrate_number || 0);
 
     // Prepare aircraft data for Klaviyo
     const item = {
@@ -816,7 +817,6 @@ function attachDetailsButtonListeners() {
     button.addEventListener("click", function () {
       const btnDataIndex = button.getAttribute("data-index");
       const aircraftId = button.getAttribute("data_got_id");
-      const calculatedPrice = button.getAttribute("data-calculated-price");
 
       // Log the specific aircraft data based on the button's data_got_id
       if (apiData.response && aircraftId) {
@@ -858,7 +858,7 @@ function attachDetailsButtonListeners() {
 
         if (specificAircraftData) {
           // Track aircraft view in Klaviyo for logged-in users
-          trackAircraftViewInKlaviyo(specificAircraftData, calculatedPrice);
+          trackAircraftViewInKlaviyo(specificAircraftData);
         }
       }
 
@@ -1159,10 +1159,7 @@ function getHotDealHtml(
         <div class="bookingbutton">
 <a  class="bookinglink button fill_button request-book-btn" href="#"  data-flightrequestid="${flightRequestId}" data-type="instant" data-aircraftid="${
     item._id
-  }" data-price="${parseInt(
-    calculateTotal.replace(/,/g, ""),
-    10
-  )}">REQUEST TO BOOK</a>
+  }">REQUEST TO BOOK</a>
           <button data_got_id="${item._id}" data-calculated-price="${parseInt(
     calculateTotal.replace(/,/g, ""),
     10
@@ -2130,10 +2127,7 @@ function getRegularItemHtml(
           <div class="bookingbutton">
             <a  class="bookinglink button fill_button request-book-btn" href="#"  data-flightrequestid="${flightRequestId}" data-type="market" data-aircraftid="${
     item._id
-  }" data-price="${parseInt(
-    calculateTotal.replace(/,/g, ""),
-    10
-  )}">REQUEST TO BOOK</a>
+  }">REQUEST TO BOOK</a>
             <button data_got_id="${item._id}" data-calculated-price="${parseInt(
     calculateTotal.replace(/,/g, ""),
     10
@@ -2950,6 +2944,9 @@ function getRegularItemHtml(
     `;
 }
 
+// Global object to store calculated values by aircraft ID
+window.aircraftCalculatedValues = window.aircraftCalculatedValues || {};
+
 // Function to create and append an item block
 function createItemBlock(item, index, isHotDeal, fragment, distance, TimeDown) {
   const getTotalTime = TimeDown / item.cruise_speed_avg_fixedrate_number;
@@ -2974,6 +2971,9 @@ function createItemBlock(item, index, isHotDeal, fragment, distance, TimeDown) {
     );
   }
   const calculateTotal = calculatedValue.toLocaleString();
+
+  // Store the calculated value globally for tracking
+  window.aircraftCalculatedValues[item._id] = calculatedValue;
 
   const calculateHoursRate = item.price_per_hour_fixedrate_number * multiplier;
 
