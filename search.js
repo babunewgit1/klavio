@@ -751,23 +751,31 @@ function trackAircraftViewInKlaviyo(aircraftData) {
     // Check if user is logged in
     const userEmail = Cookies.get("userEmail");
     if (!userEmail) {
-      console.log("User not logged in, skipping Klaviyo aircraft tracking");
       return;
     }
-
-    console.log("Starting Klaviyo tracking for user:", userEmail);
 
     // Prepare aircraft data for Klaviyo
     const item = {
       ProductName: aircraftData.description_text || "Aircraft",
       ProductID: aircraftData._id || "",
-      SKU: aircraftData.registration || "",
-      Categories: aircraftData.class_text || "",
-      ImageURL: aircraftData.exterior_image1_image || "",
-      URL: `https://jettly.com/fleet/${aircraftData._id}`,
-      Brand: aircraftData.operator_name || "",
-      Price: aircraftData.price_per_hour_retail || 0,
-      CompareAtPrice: (aircraftData.price_per_hour_retail || 0) * 1.2,
+      SKU: aircraftData.registration_text || "",
+      Categories: aircraftData.aircraft_category_custom_aircraft_category || "",
+      ImageURL: `https:${aircraftData.exterior_image1_image}`,
+      URL: `https://jettly.com/fleet/${aircraftData.Slug}`,
+      Brand: aircraftData.operator_txt_text || "",
+      Price: Math.round(aircraftData.price_per_hour_number_number || 0),
+      CompareAtPrice: Math.round(
+        (aircraftData.price_per_hour_number_number || 0) * 1.2
+      ),
+      Title: aircraftData.description_text || "Aircraft",
+      ItemId: aircraftData._id || "",
+      Metadata: {
+        Brand: aircraftData.operator_txt_text || "",
+        Price: Math.round(aircraftData.price_per_hour_number_number || 0),
+        CompareAtPrice: Math.round(
+          (aircraftData.price_per_hour_number_number || 0) * 1.2
+        ),
+      },
     };
 
     // Callback function to track the product view
@@ -777,7 +785,6 @@ function trackAircraftViewInKlaviyo(aircraftData) {
         typeof window.klaviyo.track === "function"
       ) {
         window.klaviyo.track("Viewed Product", item);
-        console.log("Aircraft view tracked in Klaviyo:", item);
       }
     }
 
@@ -792,7 +799,6 @@ function trackAircraftViewInKlaviyo(aircraftData) {
         },
         trackProductCallback
       );
-      console.log("User identified in Klaviyo:", userEmail);
     } else {
       // Fallback: try direct tracking if identify is not available
       trackProductCallback();
@@ -838,15 +844,8 @@ function attachDetailsButtonListeners() {
         }
 
         if (specificAircraftData) {
-          console.log(
-            `Specific Aircraft Data from ${foundInSet} (ID: ${aircraftId}):`,
-            specificAircraftData.description_text
-          );
-
           // Track aircraft view in Klaviyo for logged-in users
           trackAircraftViewInKlaviyo(specificAircraftData);
-        } else {
-          console.log("Aircraft data not found for ID:", aircraftId);
         }
       }
 
@@ -1155,7 +1154,7 @@ function getHotDealHtml(
         </div>
       </div>
     </div>
-    <div class="item_tab_block" data-index="${index}" data>
+    <div class="item_tab_block" data-index="${index}">
       <div class="overflow_wrapper">
       <div class="cross_mb_icon">
         <div class="item_tab_heading_block">
@@ -3876,8 +3875,6 @@ function initialize() {
   if (storedData) {
     const findWay = JSON.parse(storedData);
     way = findWay.way;
-  } else {
-    console.log("'way' data not found in sessionStorage.");
   }
 
   let data = {};
@@ -3945,8 +3942,6 @@ function initialize() {
       apiData = responseData;
       longestFlight = apiData.response.longest_flight_leg;
       flightRequestId = apiData.response.flightrequest;
-
-      console.log(apiData); // calling api
 
       // Save flightRequestId in sessionStorage as an array
       let storedFlightIds = JSON.parse(
